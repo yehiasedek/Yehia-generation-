@@ -1,0 +1,5 @@
+streamlit
+arabic_reshaper
+python-bidi
+pillow
+numpy
