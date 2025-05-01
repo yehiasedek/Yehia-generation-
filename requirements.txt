@@ -1,0 +1,5 @@
+
+streamlit
+Pillow
+arabic_reshaper
+python-bidi
