@@ -1,79 +1,107 @@
+import streamlit as st from PIL import Image, ImageDraw, ImageFont import arabic_reshaper from bidi.algorithm import get_display import textwrap import os
 
-import streamlit as st
-from PIL import Image, ImageDraw, ImageFont
-import arabic_reshaper
-from bidi.algorithm import get_display
-import io
-import textwrap
+=== إعداد الخطوط ===
 
-st.set_page_config(page_title="مولد صور عربية", layout="centered")
-st.title("مولد صور للنصوص العربية بخط Amiri Quran وتشكيل كامل")
+FONT_PATHS = { "Amiri": "Amiri-Regular.ttf", "Amiri Quran": "AmiriQuran-Regular.ttf", "Noto Naskh": "NotoNaskhArabic-Regular.ttf", "DejaVu Sans": "DejaVuSans.ttf" }
 
-title = st.text_input("العنوان (مُشكّل):")
-body = st.text_area("النص الكامل (مُشكّل):")
+التأكد من تحميل الخطوط المطلوبة
 
-font_size_title = st.slider("حجم خط العنوان", 24, 100, 44)
-font_size_body = st.slider("حجم خط النص", 20, 80, 36)
-text_color_title = st.color_picker("لون العنوان", "#3C5A4C")
-text_color_body = st.color_picker("لون النص", "#7B3F3A")
-bg_color = st.color_picker("لون الخلفية", "#F3E7D4")
+for name, path in FONT_PATHS.items(): if not os.path.isfile(path): st.error(f"الخط '{name}' غير موجود في المسار: {path}")
 
-img_width = 1080
-img_height = 1350
+=== الإعدادات الجانبية ===
 
-def wrap_arabic_text(text, font, max_width, draw):
-    reshaped = arabic_reshaper.reshape(text)
-    bidi_text = get_display(reshaped)
-    words = bidi_text.split(' ')
-    lines = []
-    line = ''
-    for word in words:
-        test_line = word + ' ' + line if line else word
-        width = draw.textlength(test_line, font=font)
-        if width <= max_width - 100:
-            line = test_line
-        else:
-            lines.append(line)
-            line = word
-    if line:
-        lines.append(line)
-    return lines
+st.sidebar.title("إعدادات التصميم")
 
-if st.button("توليد الصورة"):
-    image = Image.new("RGB", (img_width, img_height), bg_color)
-    draw = ImageDraw.Draw(image)
+تحميل صورة خلفية اختيارية
 
-    try:
-        font_path = "AmiriQuran-Regular.ttf"
-        title_font = ImageFont.truetype(font_path, font_size_title)
-        body_font = ImageFont.truetype(font_path, font_size_body)
-    except Exception as e:
-        st.error(f"فشل تحميل الخط: {e}")
-        st.stop()
+bg_image = st.sidebar.file_uploader("رفع صورة كخلفية (اختياري)", type=["png", "jpg", "jpeg"])
 
-    # رسم العنوان
-    reshaped_title = arabic_reshaper.reshape(title)
-    displayed_title = get_display(reshaped_title)
-    title_width = draw.textlength(displayed_title, font=title_font)
-    title_x = (img_width - title_width) // 2
-    title_y = 80
-    draw.text((title_x, title_y), displayed_title, font=title_font, fill=text_color_title)
+اختيار الخط
 
-    # تقسيم النص الطويل
-    body_lines = []
-    for paragraph in body.split("\n"):
-        body_lines.extend(wrap_arabic_text(paragraph.strip(), body_font, img_width, draw))
+font_name = st.sidebar.selectbox("اختر الخط", list(FONT_PATHS.keys()), index=1) title_font_path = FONT_PATHS[font_name] body_font_path = FONT_PATHS[font_name]
 
-    # رسم النص
-    y = title_y + font_size_title + 50
-    for line in body_lines:
-        line_width = draw.textlength(line, font=body_font)
-        x = (img_width - line_width) // 2
-        draw.text((x, y), line, font=body_font, fill=text_color_body)
-        y += font_size_body + 10
+حجم الخط
 
-    # عرض وتنزيل الصورة
-    buf = io.BytesIO()
-    image.save(buf, format="PNG")
-    st.image(buf.getvalue())
-    st.download_button("تحميل الصورة", buf.getvalue(), file_name="image.png", mime="image/png")
+title_font_size = st.sidebar.slider("حجم خط العنوان", 20, 100, 48) body_font_size = st.sidebar.slider("حجم خط النص", 16, 80, 36)
+
+اختيار الألوان
+
+title_color = st.sidebar.color_picker("لون العنوان", "#2e4739") body_color = st.sidebar.color_picker("لون النص", "#5f2c1e")
+
+اختيار المحاذاة
+
+alignment = st.sidebar.selectbox("محاذاة النص", ["يمين", "توسيط", "يسار"], index=0)
+
+أبعاد الصورة
+
+st.sidebar.markdown("### أبعاد الصورة") default_width = 1080 default_height = 1349
+
+aspect_options = { "1:1": (1, 1), "3:4": (3, 4), "4:5": (4, 5), "2:3": (2, 3), "16:9": (16, 9), "9:16": (9, 16) } aspect_choice = st.sidebar.selectbox("اختر نسبة الأبعاد (اختياري)", ["بدون", *aspect_options.keys()])
+
+use_aspect_by = None if aspect_choice != "بدون": use_aspect_by = st.sidebar.radio("اضبط النسبة بناءً على:", ["العرض", "الارتفاع"], index=0)
+
+width = st.sidebar.number_input("العرض (px)", min_value=200, max_value=4000, value=default_width) height = st.sidebar.number_input("الارتفاع (px)", min_value=200, max_value=4000, value=default_height)
+
+if aspect_choice != "بدون": ar, br = aspect_options[aspect_choice] if use_aspect_by == "العرض": height = int(width * br / ar) else: width = int(height * ar / br)
+
+=== إدخال المحتوى ===
+
+st.title("مولّد صور بالنصوص العربية") title_text = st.text_input("العنوان:", "أتعرف ما معنى اليقين بالله؟") body_text = st.text_area("النص:", """ اليقين بالله هو الذي يُحقّق المُستحيل، اليقين بالله هو تكون كل الأبواب مغلقة وكل الظروف صعبة وكل المؤشرات توحي بعكس ما تتمناه لكنك على يقين بأن الله سيصلح كل شيء. """)
+
+if st.button("توليد الصورة"): # إعداد الصورة if bg_image: image = Image.open(bg_image).convert("RGB").resize((width, height)) else: image = Image.new("RGB", (width, height), color=(245, 235, 211))  # خلفية افتراضية
+
+draw = ImageDraw.Draw(image)
+
+# إعداد الخطوط
+try:
+    title_font = ImageFont.truetype(title_font_path, title_font_size)
+    body_font = ImageFont.truetype(body_font_path, body_font_size)
+except Exception as e:
+    st.error(f"خطأ في تحميل الخط: {e}")
+    st.stop()
+
+# تنسيق النص بالعربية
+def prepare_text(text):
+    reshaped_text = arabic_reshaper.reshape(text)
+    return get_display(reshaped_text)
+
+title_text = prepare_text(title_text)
+body_lines = []
+
+max_text_width = width - 100  # هامش داخلي
+for line in body_text.split("\n"):
+    prepared = prepare_text(line)
+    wrapped = textwrap.wrap(prepared, width=60)
+    body_lines.extend(wrapped if wrapped else [""])
+
+# حساب مواضع الرسم
+y = 100
+title_width, title_height = draw.textsize(title_text, font=title_font)
+if alignment == "توسيط":
+    title_x = (width - title_width) // 2
+elif alignment == "يسار":
+    title_x = width - title_width - 50
+else:  # يمين
+    title_x = 50
+
+draw.text((title_x, y), title_text, font=title_font, fill=title_color)
+y += title_height + 40
+
+for line in body_lines:
+    line_width, line_height = draw.textsize(line, font=body_font)
+    if alignment == "توسيط":
+        x = (width - line_width) // 2
+    elif alignment == "يسار":
+        x = width - line_width - 50
+    else:
+        x = 50
+    draw.text((x, y), line, font=body_font, fill=body_color)
+    y += line_height + 10
+
+st.image(image, caption="الصورة الناتجة", use_column_width=True)
+
+# حفظ الصورة للتحميل
+image.save("output.png")
+with open("output.png", "rb") as file:
+    st.download_button("تحميل الصورة", file, file_name="arabic_text_image.png", mime="image/png")
+
