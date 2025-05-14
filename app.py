@@ -8,14 +8,13 @@ st.set_page_config(page_title="مولد صور للنصوص العربية", lay
 st.title("تطبيق إنشاء صور مزخرفة للنصوص العربية")
 
 # واجهة الإدخال
-title = st.text_input("العنوان:")
-body = st.text_area("النص الكامل (يمكن أن يحتوي على أسطر):")
+title = st.text_input("العنوان (يمكن أن يحتوي على التشكيل):")
+body = st.text_area("النص الكامل (يمكن أن يحتوي على التشكيل وأسطر متعددة):")
 
 st.markdown("### إعدادات الخط")
 font_size_title = st.slider("حجم خط العنوان", 20, 100, 40)
 font_size_body = st.slider("حجم خط النص", 20, 80, 30)
 
-# قائمة الخطوط المدعومة
 available_fonts = {
     "Amiri": "Amiri-Regular.ttf",
     "Amiri Quran": "AmiriQuran-Regular.ttf",
@@ -47,7 +46,6 @@ if st.button("توليد الصورة"):
         )
         draw.line([(0, y), (img_width, y)], fill=gradient)
 
-    # تحميل الخط
     try:
         title_font = ImageFont.truetype(font_path, font_size_title)
         body_font = ImageFont.truetype(font_path, font_size_body)
@@ -55,10 +53,12 @@ if st.button("توليد الصورة"):
         st.error("تعذر تحميل الخط. تأكد من وجود الملفات داخل مجلد المشروع.")
         st.stop()
 
+    # إعادة تشكيل النص مع الحفاظ على التشكيل
     reshaped_title = arabic_reshaper.reshape(title)
-    reshaped_body = arabic_reshaper.reshape(body)
+    reshaped_body_lines = [arabic_reshaper.reshape(line) for line in body.split("\n")]
+
     displayed_title = get_display(reshaped_title)
-    displayed_body = get_display(reshaped_body)
+    displayed_body_lines = [get_display(line) for line in reshaped_body_lines]
 
     # توسيط العنوان
     title_bbox = title_font.getbbox(displayed_title)
@@ -68,7 +68,7 @@ if st.button("توليد الصورة"):
 
     # النص الأساسي
     body_y = title_y + font_size_title + 20
-    for line in displayed_body.split("\n"):
+    for line in displayed_body_lines:
         line_bbox = body_font.getbbox(line)
         body_x = (img_width - (line_bbox[2] - line_bbox[0])) // 2
         draw.text((body_x, body_y), line, font=body_font, fill=text_color)
