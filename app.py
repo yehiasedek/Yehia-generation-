@@ -1,4 +1,3 @@
-
 import streamlit as st
 from PIL import Image, ImageDraw, ImageFont
 import arabic_reshaper
@@ -15,7 +14,18 @@ body = st.text_area("النص الكامل (يمكن أن يحتوي على أس
 st.markdown("### إعدادات الخط")
 font_size_title = st.slider("حجم خط العنوان", 20, 100, 40)
 font_size_body = st.slider("حجم خط النص", 20, 80, 30)
-font_path = st.selectbox("اختر الخط:", ["DejaVuSans.ttf", "NotoNaskhArabic-Regular.ttf", "Arial.ttf"])
+
+# قائمة الخطوط المدعومة
+available_fonts = {
+    "Amiri": "Amiri-Regular.ttf",
+    "Amiri Quran": "AmiriQuran-Regular.ttf",
+    "DejaVu Sans": "DejaVuSans.ttf",
+    "Noto Naskh Arabic": "NotoNaskhArabic-Regular.ttf",
+    "Noto Naskh Arabic Variable": "NotoNaskhArabic-VariableFont_wght.ttf"
+}
+
+font_name = st.selectbox("اختر الخط:", list(available_fonts.keys()))
+font_path = available_fonts[font_name]
 
 st.markdown("### الألوان")
 text_color = st.color_picker("لون النص", "#000000")
@@ -27,7 +37,7 @@ img_width = st.slider("عرض الصورة", 400, 1600, 800, step=100)
 img_height = st.slider("ارتفاع الصورة", 400, 2000, 1000, step=100)
 
 if st.button("توليد الصورة"):
-    # إنشاء الصورة
+    # إنشاء خلفية متدرجة
     image = Image.new("RGB", (img_width, img_height), bg_color_top)
     draw = ImageDraw.Draw(image)
     for y in range(img_height):
@@ -37,12 +47,12 @@ if st.button("توليد الصورة"):
         )
         draw.line([(0, y), (img_width, y)], fill=gradient)
 
-    # تحميل الخطوط
+    # تحميل الخط
     try:
         title_font = ImageFont.truetype(font_path, font_size_title)
         body_font = ImageFont.truetype(font_path, font_size_body)
     except:
-        st.error("تعذر تحميل الخط. تأكد من وجود الملف في مجلد المشروع.")
+        st.error("تعذر تحميل الخط. تأكد من وجود الملفات داخل مجلد المشروع.")
         st.stop()
 
     reshaped_title = arabic_reshaper.reshape(title)
